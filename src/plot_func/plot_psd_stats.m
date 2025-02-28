@@ -10,12 +10,19 @@ tmph = [];
 patchcolor = [0.75 0.75 0.75];
 color2 = [0 0 0];
 orig_yl = ax.YLim;
-yl  = ax.YLim; 
+y1  = ax.YLim; 
 % yl(1) = yl(1)-max(abs(yl));
 % yl(2) = yl(2)+max(abs(yl));
-yl(1) = yl(1)*1.2;
-yl(2) = yl(2)+5;
-
+if y1(1) > 0
+    y1(1) = y1(1)-(5*abs(y1(1)));
+else
+    y1(1) = y1(1)*5;
+end
+if y1(2) > 0
+    y1(2) = y1(2)*5;
+else
+    y1(2) = y1(2)+(abs(y(1))*5);
+end
 if ~strcmpi(highlightmode, 'background')
     pos = get(ax, 'position');
     set(gca, 'xtick', []);
@@ -46,7 +53,7 @@ if ~isempty(regions)
             in_a_region = 0;
             if strcmpi(highlightmode, 'background') %indicate significance in the background
                 tmph = patch([tmpreg(1) tmpreg(2) tmpreg(2) tmpreg(1)], ...
-                    [yl(1) yl(1) yl(2) yl(2)], patchcolor); hold on;
+                    [y1(1) y1(1) y1(2) y1(2)], patchcolor); hold on;
                 set(tmph, 'edgecolor', 'none','facealpha',0.5,'edgealpha',0.2);
             else
                 oldax = ax;
