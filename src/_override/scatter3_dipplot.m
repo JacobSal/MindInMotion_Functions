@@ -173,7 +173,7 @@
 %       position and moment) plots a dipole 'track'
 %   dipplot(source,'mri',data.mri,'coordformat','MNI','projlines','on')
 
-function [outsources, XX, YY, ZZ, XO, YO, ZO] = dipplot( sourcesori, varargin )
+function [outsources, XX, YY, ZZ, XO, YO, ZO] = scatter3_dipplot( sourcesori, varargin )
 
 DEFAULTVIEW = [0 0 1];
 
@@ -248,6 +248,7 @@ g = finputcheck( varargin, { 'color'        ''         []                 [];
     'projcol'      ''         []                 [];
     'projwidth'    'real'     []                 [];
     'projlines'    ''         []                 'off';
+    'projalpha'    'real'     [0 1]               1;
     'pointout'     'string'   { 'on' 'off' }     'off';
     'holdon'       'string'   { 'on' 'off' }     'off';
     'dipolesize'   'real'     [0 Inf]            30;
@@ -475,7 +476,9 @@ end
 % -----------
 if isempty(g.color)
     g.color = { 'g' 'b' 'r' 'm' 'c' 'y' };
-    if strcmp(BACKCOLOR, 'w'), g.color = { g.color{:} 'k' }; end
+    if strcmp(BACKCOLOR, 'w')
+        g.color = { g.color{:} 'k' };
+    end
 end
 g.color = g.color(mod(0:length(sources)-1, length(g.color)) +1);
 if ~isempty(g.color)
@@ -492,8 +495,12 @@ else
 end
 
 % Projection linewidth
-if isempty(g.projwidth), g.projwidth = repmat(g.dipolesize/7.5/5,1,length(sources)); end
-if length(g.projwidth) == 1, g.projwidth = repmat(g.projwidth, [1 length(sourcesori)]); end
+if isempty(g.projwidth)
+    g.projwidth = repmat(g.dipolesize/7.5/5,1,length(sources)); 
+end
+if length(g.projwidth) == 1
+    g.projwidth = repmat(g.projwidth, [1 length(sourcesori)]);
+end
 
 % build summarized figure
 % -----------------------
@@ -800,7 +807,8 @@ for index = 1:length(sources)
             else
                 %h = plotsphere([xx yy zz], g.dipolesize/6, 'color', g.color{index});
             end
-            h = plotsphere([xx yy zz], g.dipolesize(index)/6, 'color', g.color{index});
+            h = plotsphere([xx yy zz], g.dipolesize(index)/6, ...
+                'color', g.color{index});
             set(h(1), 'userdata', dipstruct, 'tag', tag);
         else % plot dipole markers
             % h = plot3(xx,  yy,  zz);            
@@ -809,11 +817,15 @@ for index = 1:length(sources)
             %-
             h = scatter3(xx,  yy,  zz);
             set(h, 'userdata', dipstruct, 'tag', tag, ...
-                'marker', 'o',  'SizeData', g.dipolesize(index), 'color', g.color{index},...
-                'MarkerFaceColor',g.color{index},'ColorVariable',[],'CData',[0,0,0],'LineWidth',0.1);
+                'marker', 'o', ...
+                'SizeData', g.dipolesize(index), ...
+                'color', g.color{index},...
+                'MarkerFaceColor',g.color{index}, ...
+                'ColorVariable',[], ...
+                'CData',[0,0,0], ...
+                'LineWidth',0.1);
             %(10/29/2024) JS, using scatter3 so I can adjust the alpha
-            %property.         
-            
+            %property.
         end
         
         %
@@ -833,7 +845,10 @@ for index = 1:length(sources)
             tag = [ 'dipole' num2str(index) ];
             if ~strcmpi(g.image, 'besa')
                 h = line( [tmp1xx tmp1xxo1]', [tmp1yy tmp1yyo1]', [tmp1zz tmp1zzo1]');
-                set(h, 'userdata', 'proj', 'tag', tag, 'color','k', 'linewidth', g.dipolesize(index)/7.5);
+                set(h, 'userdata', 'proj', ...
+                    'tag', tag, ...
+                    'color','k', ...
+                    'linewidth', g.dipolesize(index)/7.5);
             end
             if strcmp(BACKCOLOR, 'k'), set(h, 'color', tmpcolor); end
             % h = plot3(tmp1xx,  tmp1yy,  tmp1zz);
@@ -841,16 +856,25 @@ for index = 1:length(sources)
             %     'marker', '.', 'markersize', g.dipolesize(index), 'color', tmpcolor);
             %-
             h = scatter3(tmp1xx,  tmp1yy,  tmp1zz);
-            set(h, 'userdata', 'proj', 'tag', tag, ...
-                'marker', 'o',  'SizeData', g.dipolesize(index), 'color', tmpcolor,...
-                'MarkerFaceColor',g.color{index},'ColorVariable',[],'CData',[0,0,0],'LineWidth',0.1);
+            set(h, 'userdata', 'proj', ...
+                'tag', tag, ...
+                'marker', 'o', ...
+                'SizeData', g.dipolesize(index), ...
+                'color', tmpcolor,...
+                'MarkerFaceColor',g.color{index}, ...
+                'ColorVariable',[], ...
+                'CData',[0,0,0], ...
+                'LineWidth',0.1);
             %(10/29/2024) JS, using scatter3 so I can adjust the alpha
             %property.            
             % project onto y axis
             tag = [ 'dipole' num2str(index) ];
             if ~strcmpi(g.image, 'besa')
                 h = line( [tmp2xx tmp2xxo1]', [tmp2yy tmp2yyo1]', [tmp2zz tmp2zzo1]');
-                set(h, 'userdata', 'proj', 'tag', tag, 'color','k', 'linewidth', g.dipolesize(index)/7.5);
+                set(h, 'userdata', 'proj', ...
+                    'tag', tag, ...
+                    'color','k', ...
+                    'linewidth', g.dipolesize(index)/7.5);
             end
             if strcmp(BACKCOLOR, 'k'), set(h, 'color', tmpcolor); end
             % h = plot3(tmp2xx,  tmp2yy,  tmp2zz);
@@ -858,9 +882,15 @@ for index = 1:length(sources)
             %     'marker', '.', 'markersize', g.dipolesize(index), 'color', tmpcolor);
             %-
             h = scatter3(tmp2xx,  tmp2yy,  tmp2zz);
-            set(h, 'userdata', 'proj', 'tag', tag, ...
-                'marker', 'o',  'SizeData', g.dipolesize(index), 'color', tmpcolor,...
-                'MarkerFaceColor',g.color{index},'ColorVariable',[],'CData',[0,0,0],'LineWidth',0.1);
+            set(h, 'userdata', 'proj', ...
+                'tag', tag, ...
+                'marker', 'o', ...
+                'SizeData', g.dipolesize(index), ...
+                'color', tmpcolor,...
+                'MarkerFaceColor',g.color{index}, ...
+                'ColorVariable',[], ...
+                'CData',[0,0,0], ...
+                'LineWidth',0.1);
             %(10/29/2024) JS, using scatter3 so I can adjust the alpha
             %property.
             
@@ -876,9 +906,15 @@ for index = 1:length(sources)
             %     'marker', '.', 'markersize', g.dipolesize(index), 'color', tmpcolor);
             %-
             h = scatter3(tmp3xx,  tmp3yy,  tmp3zz);
-            set(h, 'userdata', 'proj', 'tag', tag, ...
-                'marker', 'o',  'SizeData', g.dipolesize(index), 'color', tmpcolor,...
-                'MarkerFaceColor',g.color{index},'ColorVariable',[],'CData',[0,0,0],'LineWidth',0.1);
+            set(h, 'userdata', 'proj', ...
+                'tag', tag, ...
+                'marker', 'o', ...
+                'SizeData', g.dipolesize(index), ...
+                'color', tmpcolor,...
+                'MarkerFaceColor',g.color{index}, ...
+                'ColorVariable',[], ...
+                'CData',[0,0,0], ...
+                'LineWidth',0.1);
             %(10/29/2024) JS, using scatter3 so I can adjust the alpha
             %property.
         end
@@ -891,23 +927,48 @@ for index = 1:length(sources)
             % project onto z axis
             tag = [ 'dipole' num2str(index) ];
             h(1) = line( [xx tmp1xx]', [yy tmp1yy]', [zz tmp1zz]);
-            set(h(1), 'userdata', 'proj', 'linestyle', '--', ...
-                'tag', tag, 'color', g.color{index}, 'linewidth', g.projwidth(index));
-            
+            set(h(1), 'userdata', 'proj', ...
+                'linestyle', '--', ...
+                'tag', tag, ...
+                'color', g.color{index}, ...
+                'linewidth', g.projwidth(index));
+            % h(1).Color = [g.projcol{index},g.projalpha];
+            %(03/25/2025) JS, adding in the ability to change the line
+            %alpha
+
             % project onto x axis
             tag = [ 'dipole' num2str(index) ];
             h(2) = line( [xx tmp2xx]', [yy tmp2yy]', [zz tmp2zz]);
-            set(h(2), 'userdata', 'proj', 'linestyle', '--', ...
-                'tag', tag, 'color', g.color{index}, 'linewidth', g.projwidth(index));
-            
+            set(h(2),'userdata','proj', ...
+                'linestyle', '--', ...
+                'tag',tag, ...
+                'color',g.color{index}, ...
+                'linewidth', g.projwidth(index));
+            % h(2).Color = [g.projcol{index},g.projalpha];
+            %(03/25/2025) JS, adding in the ability to change the line
+            %alpha
+
             % project onto y axis
             tag = [ 'dipole' num2str(index) ];
             h(3) = line( [xx tmp3xx]', [yy tmp3yy]', [zz tmp3zz]);
-            set(h(3), 'userdata', 'proj', 'linestyle', '--', ...
-                'tag', tag, 'color', g.color{index}, 'linewidth', g.projwidth(index));
+            set(h(3),'userdata','proj', ...
+                'linestyle','--', ...
+                'tag',tag, ...
+                'color', g.color{index}, ...
+                'linewidth', g.projwidth(index));
+            % h(3).Color = [g.projcol{index},g.projalpha];
+            %(03/25/2025) JS, adding in the ability to change the line
+            %alpha
             if ~isempty(g.projcol)
                 set(h, 'color', g.projcol{index});
+                h(1).Color = [g.projcol{index},g.projalpha];
+                % set(h, 'color', g.projcol{index});
+                h(2).Color = [g.projcol{index},g.projalpha];
+                % set(h, 'color', g.projcol{index});
+                h(3).Color = [g.projcol{index},g.projalpha];
             end
+            %(03/25/2025) JS, adding in the ability to change the line
+            %alpha
         end
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% draw text  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -921,7 +982,9 @@ for index = 1:length(sources)
                     label = [ 'dipole' int2str(sources(index).component) ];
                 end
                 h = text(xx,  yy,  zz, [ '  ' label]);
-                set(h, 'userdata', dipstruct, 'tag', tag, 'fontsize', g.dipolesize(index)/2 );
+                set(h, 'userdata', dipstruct, ...
+                    'tag', tag, ...
+                    'fontsize', g.dipolesize(index)/2 );
                 if ~strcmpi(g.image, 'besa'), set(h, 'color', 'w'); end
             end
         end

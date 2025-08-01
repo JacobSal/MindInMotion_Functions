@@ -24,7 +24,7 @@ t = tic;
 %## DEFINE DEFAULTS
 p = inputParser;
 %## REQUIRED
-addRequired(p,'struct_in',@iscell);
+addRequired(p,'struct_in',@(x) iscell(x) || isstruct(x));
 %## OPTIONAL
 addOptional(p,'struct_ids',struct_ids,struct_ids_vfcn)
 %## PARSE
@@ -32,7 +32,11 @@ parse(p, struct_in, varargin{:});
 %## SET DEFAULTS
 struct_ids = p.Results.struct_ids;
 %% ===================================================================== %%
-struct_in = struct_in(~cellfun(@isempty,struct_in));
+if iscell(struct_in)
+    struct_in = struct_in(~cellfun(@isempty,struct_in));
+else
+    struct_in = struct_in(~cellfun(@isempty,{struct_in.subj_char}));
+end
 % if istable(struct_in{1})
 %     for i = 1:length(struct_in)
 %         struct_in{i} = table2struct(struct_in{i});

@@ -41,7 +41,7 @@ else
 end
 
 if ~isempty(regions)
-%     axes(ax);
+    tmph = cell(length(regions),1);
     in_a_region = 0;
     for index=1:length(regions)
         if regions(index) && ~in_a_region
@@ -51,16 +51,20 @@ if ~isempty(regions)
         if (~regions(index) || index == length(regions)) && in_a_region
             tmpreg(2) = times(min(length(times), index));
             in_a_region = 0;
-            if strcmpi(highlightmode, 'background') %indicate significance in the background
-                tmph = patch([tmpreg(1) tmpreg(2) tmpreg(2) tmpreg(1)], ...
+            if strcmpi(highlightmode,'background') %indicate significance in the background
+                tmph{index} = patch([tmpreg(1) tmpreg(2) tmpreg(2) tmpreg(1)], ...
                     [y1(1) y1(1) y1(2) y1(2)], patchcolor); hold on;
-                set(tmph, 'edgecolor', 'none','facealpha',0.5,'edgealpha',0.2);
+                set(tmph{index},'edgecolor','none', ...
+                    'facealpha',0.5, ...
+                    'edgealpha',0.2);
             else
                 oldax = ax;
                 axes(axsignif);
-                tmph = patch([tmpreg(1) tmpreg(2) tmpreg(2) tmpreg(1)], ...
-                    [yl2(1) yl2(1) yl2(2) yl2(2)], color2); hold on;
-                set(tmph, 'edgecolor', color2);
+                tmph{index} = patch([tmpreg(1) tmpreg(2) tmpreg(2) tmpreg(1)], ...
+                    [yl2(1) yl2(1) yl2(2) yl2(2)], color2);
+                hold on;
+                set(tmph{index}, ...
+                    'edgecolor',color2);
                 axes(oldax);
             end
         end

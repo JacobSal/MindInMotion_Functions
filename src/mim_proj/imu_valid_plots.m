@@ -372,7 +372,8 @@ set(leg,'Position',[ax_x-0.1,...
     ax_y-(y_shift*3+0.06),leg.Position(3),leg.Position(4)]);
 leg.ItemTokenSize(1) = leg_token_size;
 hold off;
-exportgraphics(fig,[save_dir filesep sprintf('%s_2dtime_imu_fig.png',save_fname_ext)],'Resolution',EXPORT_RES)
+exportgraphics(fig,[save_dir filesep sprintf('%s_2dtime_imu_fig.png',save_fname_ext)], ...
+    'Resolution',EXPORT_RES)
 %-
 fig_handles = [fig_handles,fig];
 %% PLOT 3
@@ -495,8 +496,134 @@ leg.ItemTokenSize(1) = leg_token_size;
 
 %-
 hold off;
-exportgraphics(fig,[save_dir filesep sprintf('%s_2dstate_imu_fig.png',save_fname_ext)],'Resolution',EXPORT_RES)
+exportgraphics(fig,[save_dir filesep sprintf('%s_2dstate_imu_fig.png',save_fname_ext)], ...
+    'Resolution',EXPORT_RES)
 %-
 fig_handles = [fig_handles,fig];
+
+%% MAKE A MOVIE
+%-- get rid of 0's
+chk = body_posx ~= 0;
+body_posx = body_posx(chk);
+body_posy = body_posy(chk);
+body_posz = body_posz(chk);
+body_posx = body_posx(10000:50000);
+body_posy = body_posy(10000:50000);
+body_posz = body_posz(10000:50000);
+% world_posx = world_posx(chk);
+% world_posy = world_posy(chk);
+% world_posz = world_posz(chk);
+% world_posx = world_posx(10000:50000);
+% world_posy = world_posy(10000:50000);
+% world_posz = world_posz(10000:50000);
+
+%%
+%##
+LINE_PROPS3D_BODY = {'Marker','o', ...
+    'MarkerFaceAlpha',0.6, ...
+    'MarkerFaceColor',[0,0,0], ...
+    'SizeData',20, ...
+    'CData',[0,0,0], ...
+    'LineWidth',0.0005, ...
+    'DisplayName','body frame'};
+LINE_PROPS3D_WORLD = {'Marker','o', ...
+    'MarkerFaceAlpha',0.7, ...
+    'MarkerFaceColor',[0,0,0], ...
+    'CData',[0,0,0], ...
+    'SizeData',50, ...
+    'LineWidth',0.01, ...
+    'DisplayName','world frame'};
+fig = figure('color','none');
+set(fig, ...
+    'Units','inches', ...
+    'Position',[0.5,0.5,6.5,6.5])
+% set(fig,'PaperUnits','inches', ...
+%     'PaperSize',[1 1], ...
+%     'PaperPosition',[0 0 1 1])
+hold on;
+set(gca,AXES_DEFAULT_PROPS{:})
+ax = axes();
+xlim([-0.06,0.06])
+ylim([-0.06,0.06])
+zlim([-0.06,0.06])
+view(ax,[45,25])
+% xlabel('Anteroposterior (m)');
+% ylabel('Mediolateral (m)');
+% zlabel('Up-down (m)');
+% set(ax,'Position',[0.25,0.5,0.5,0.5]);  %[left bottom width height]                
+set(ax,'projection','perspective', ...
+    'box','on')
+set(ax,'YTickLabel','', ...
+    'XTickLabel','', ...
+    'ZTickLabel','');
+% align_axislabel([], ax)
+camproj('perspective');     % Use perspective projection
+cam_pos = get(ax,'CameraPosition');
+cam_tgt = get(ax,'CameraTarget');
+cam_up = get(ax,'CameraUpVector');
+cam_ang = get(ax,'CameraViewAngle');
+% Get center and radius of the object for consistent camera movement
+camtarget(cam_tgt);         % Focus at origin
+campos(cam_pos);           % Initial camera position
+camva(cam_ang);                  % Fix view angle
+camup(cam_up);             % Up direction
+% Define radius from origin to camera
+radius = norm(cam_pos - cam_tgt);
+%--
+hold on
+gif_filename = [save_dir filesep 'imu_3d_movie.gif'];
+elev = 20;
+nFramesPerSecond = 20;
+nPointsPerSecond = 500;
+nPointsPerFrame = nPointsPerSecond/nFramesPerSecond;
+nPointsPerRot = 5;
+nRots = 360;
+Rots = linspace(1, 180, nRots);
+cnt = 1;
+cmaps = linspecer(6);
+hhp = [];
+for azi = 1:length(Rots)
+    az = Rots(azi);
+    % Convert spherical to Cartesian for camera position
+    x = radius * cosd(az) * cosd(elev);
+    y = radius * sind(az) * cosd(elev);
+    z = radius * sind(elev);
+    campos([x, y, z])      % Set camera position
+    camtarget(cam_tgt)     % Always look at origin
+    camup(cam_up)         % Keep Z-axis upward
+    % hhp = [];
+    for pi = 1:nPointsPerRot
+        %-- plot the next nth point
+        pp2 = scatter3(ax,body_posx(cnt),body_posy(cnt),body_posz(cnt), ...
+            LINE_PROPS3D_BODY{:});
+        pp2.MarkerFaceColor = cmaps(2,:);
+        hhp = [hhp, pp2];
+        % pp3 = scatter3(ax,world_posx(cnt),world_posy(cnt),world_posz(cnt), ...
+        %     LINE_PROPS3D_WORLD{:});
+        % pp3.MarkerFaceColor = cmaps(4,:);
+        drawnow;
+        cnt = cnt + nPointsPerFrame;
+
+        %## CAPTURE FRAME
+        frame = getframe(gcf);
+        img = frame2im(frame);
+        [imind, cm] = rgb2ind(img, 256);
+    
+        if azi == 1 && pi == 1
+            imwrite(imind, cm, gif_filename, ...
+                'gif', ...
+                'Loopcount', inf, ...
+                'DelayTime', 1/nFramesPerSecond);
+        else
+            imwrite(imind, cm, gif_filename, ...
+                'gif', ...
+                'WriteMode', 'append', ...
+                'DelayTime', 1/nFramesPerSecond);
+        end
+    end
+    delete(hhp(1:floor(nPointsPerRot/1.5)));
+    % hhp = hhp(floor(nPointsPerRot/1.5):end);
+end
+
 end
 

@@ -13,11 +13,11 @@ graphic_types = {'line','hggroup','patch','scatter'};
 %## PARSER
 p = inputParser;
 %- REQUIRED
-addRequired(p,'ax',@isgraphics)
+addRequired(p,'ax')
 addOptional(p,'graphic_types',graphic_types,@iscell)
 parse(p,ax,varargin{:});
 %% ===================================================================== %%
-if isgraphics(ax) 
+if ~isempty(ax)
     switch get(ax,'type')
         case graphic_types %{'line','hggroup','patch','scatter'},
             y = max(get(ax,'ydata'));

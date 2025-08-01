@@ -52,9 +52,12 @@ if isempty(fname)
 end
 %-
 save_fpath = [fpath filesep fname];
+if ~exist(fpath,'dir')
+    mkdir(fpath)
+end
 %- save
 s = whos('SAVEVAR');
-fprintf('\n%s is %0.2g bytes\n',fname,s.bytes);
+fprintf('\n%s is %0.2g Gigabytes\n',fname,s.bytes/1e9);
 if s.bytes >= 2e9
     fprintf('Saving %s using ''v7.3'' to\n%s\n',fname,fpath);
     save(save_fpath,'SAVEVAR','-v7.3');

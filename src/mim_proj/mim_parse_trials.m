@@ -84,18 +84,25 @@ switch EPOCH_PARAMS.epoch_method
         ALLEEG = cell(1,length(EPOCH_PARAMS.gait_trial_chars)); 
         timewarp_struct = cell(1,length(EPOCH_PARAMS.gait_trial_chars));
         %- assign trial numbers
-        EEG = pop_epoch( EEG, {EPOCH_PARAMS.epoch_event_char}, EPOCH_PARAMS.epoch_time_lims, 'newname', sprintf('Merged datasets %s epochs',EEG.subject), 'epochinfo', 'yes'); 
+        % tmp = EEG;
+        %-- epoch
+        EEG = pop_epoch( EEG, {EPOCH_PARAMS.epoch_event_char}, EPOCH_PARAMS.epoch_time_lims, ...
+            'newname', sprintf('Merged datasets %s epochs',EEG.subject), ...
+            'epochinfo','yes');
         EEG = eeg_checkset(EEG);
+        %-- find trials
         [trial_bounds] = find_trial_bounds(EEG);
         EEG = assign_trial_bounds_events(EEG,trial_bounds);
-        %- epoch
-        EEG = pop_epoch( EEG, {EPOCH_PARAMS.epoch_event_char}, EPOCH_PARAMS.epoch_time_lims, 'newname', sprintf('Merged datasets %s epochs',EEG.subject), 'epochinfo', 'yes'); 
+        % %-- epoch
+        % EEG = pop_epoch( EEG, {EPOCH_PARAMS.epoch_event_char}, EPOCH_PARAMS.epoch_time_lims, ...
+        %     'newname', sprintf('Merged datasets %s epochs',EEG.subject), ...
+        %     'epochinfo', 'yes'); 
         EEG = eeg_checkset(EEG);
         if ~isempty(EPOCH_PARAMS.baseline_time_lims)
             EEG = pop_rmbase(EEG, EPOCH_PARAMS.baseline_time_lims ,[]); % Remove baseline from an epoched dataset.[-1500 2998] = baseline latency range, is it removing the mean during each gait cycle
         end
         EEG = eeg_checkset(EEG);
-        %- time warping
+        %-- time warping
         if ~EPOCH_PARAMS.do_combine_trials
             fprintf('Generating individual trials for each condition...\n');
             tmp = unique({EEG.event.trial_num_code});
@@ -108,13 +115,13 @@ switch EPOCH_PARAMS.epoch_method
         for i = 1:length(EPOCH_PARAMS.gait_trial_chars)
             %##
             fprintf(1,'\n==== %s: Processing trial %s ====\n',EEG.subject,EPOCH_PARAMS.gait_trial_chars{i});
-            %- GAIT TIMEWARP: MIM specific function
+            %-- GAIT TIMEWARP: MIM specific function
             tmp_eeg = mim_timewarp_epoch(EEG,EPOCH_PARAMS.gait_trial_chars{i},...
                     EPOCH_PARAMS.tw_events,EPOCH_PARAMS.tw_stdev,cond_field_name);
             % tmp_eeg.etc.epoch_type = 'gait_timewarp';
-            tmp_eeg.filename = sprintf('%s_%s_EPOCH_TMPEEG.set',tmp_eeg.subject,EPOCH_PARAMS.gait_trial_chars{i});
+            tmp_eeg.filename = sprintf('%s_%s_epoch_eeg.set',tmp_eeg.subject,EPOCH_PARAMS.gait_trial_chars{i});
             tmp_eeg.condition = EPOCH_PARAMS.gait_trial_chars{i};
-            %- check to make sure a number isn't the first character
+            %-- check to make sure a number isn't the first character
             chk = regexp(EPOCH_PARAMS.gait_trial_chars{i},'\d');
             if any(chk)
                 EPOCH_PARAMS.gait_trial_chars{i} = sprintf('x%s',EPOCH_PARAMS.gait_trial_chars{i});
@@ -130,7 +137,9 @@ switch EPOCH_PARAMS.epoch_method
         error('Choose a valide EPOCH_PARAMS.epoch_method\n');
 end
 %- concatenate ALLEEG
-ALLEEG = cellfun(@(x) [[]; x], ALLEEG);
+ALLEEG = ALLEEG(~cellfun(@isempty,ALLEEG));
+ALLEEG = util_resolve_struct(ALLEEG);
+
 %## TIME
 toc
 end
@@ -138,11 +147,15 @@ end
 %## SUBFUNCTION
 function [EEG] = mim_timewarp_epoch(EEG,cond_char,events_tw,std_tw,event_field)
     %- seconds to epoch relative to first RHS
-    EEG = pop_selectevent(EEG,event_field,cond_char,'deleteevents','off','deleteepochs','on','invertepochs','off'); 
+    EEG = pop_selectevent(EEG,event_field,cond_char, ...
+        'deleteevents','off', ...
+        'deleteepochs','on', ...
+        'invertepochs','off'); 
     %- setup timewarp structure
-    timewarp = make_timewarp(EEG,events_tw,'baselineLatency',0, ...
-            'maxSTDForAbsolute',std_tw,...
-            'maxSTDForRelative',std_tw);
+    timewarp = make_timewarp(EEG,events_tw, ...
+        'baselineLatency',0, ...
+        'maxSTDForAbsolute',std_tw,...
+        'maxSTDForRelative',std_tw);
     %subject specific warpto (later use to help calc grand avg warpto across subjects)
     timewarp.warpto = median(timewarp.latencies);        
     goodepochs  = sort([timewarp.epochs]);

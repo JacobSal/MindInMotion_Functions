@@ -14,13 +14,15 @@ function [fig] = plot_txf_mask_contourf(allersp,alltimes,allfreqs,...
 % Copyright (C) Jacob Salminen, jsalminen@ufl.edu
 % Copyright (C) Chang Liu, liu.chang1@ufl.edu
 cat_logo();
-%-
+%## DEFAULTS
+DO_PRINTS = true;
 GROUPTITLE_BOXSIZE = 0.1;
 GROUPTITLE_FONTSIZE = 10;
 GROUPTITLE_FONTWEIGHT = 'bold';
 SUBPLOT_TITLE_FONTSIZE = 8;
 SUBPLOT_TITLE_FONTWEIGHT = 'bold';
-%-
+
+%## CHECKS
 pcond_chk = @(x) assert(iscell(x) && all((size(allersp)) == size(x)),...
     sprintf('allpcond is type %s and must be type cell, and its size is %s and must be %s',...
     class(x),mk_numarray_str(size(x)),mk_numarray_str(size(allersp)))); 
@@ -28,12 +30,12 @@ allersp_mask_chk = @(x) assert(iscell(x) && all((size(allersp)) == size(x)),...
     sprintf('allersp_mask is type %s and must be type cell, and its size is %s and must be %s',...
     class(x),mk_numarray_str(size(x)),mk_numarray_str(size(allersp)))); 
 
-%-
+%## SETS
 alltitles = cell(length(allersp),1);
 for i = 1:length(allersp)
     alltitles{i} = sprintf('cond%i',i);
 end
-%- 
+%--
 DEFAULT_PLOT_STRUCT = struct('figure_position_inch',[0.5,0.5,6.5,9],...
     'alltitles',{alltitles},...
     'xlabel','Gait Cycle Time (ms)',...
@@ -76,7 +78,12 @@ DEFAULT_PLOT_STRUCT = struct('figure_position_inch',[0.5,0.5,6.5,9],...
     % 'colorbar_yshift',0,... % bigger = shift to top page
     % 'colorbar_label_xshift',0.2,... % bigger = shift to left page (relative to colorbar)
     % 'colorbar_label_yshift',0.025); % bigger = shift to top page (relative to colorbar)
-AXES_DEFAULT_PROPS = {'box','off','xtick',[],'ytick',[],'ztick',[],'xcolor',[1,1,1],'ycolor',[1,1,1]};
+AXES_DEFAULT_PROPS = {'box','off', ...
+    'xtick',[], ...
+    'ytick',[], ...
+    'ztick',[], ...
+    'xcolor',[1,1,1], ...
+    'ycolor',[1,1,1]};
 %% Define Parser
 p = inputParser;
 %## REQUIRED
@@ -88,11 +95,12 @@ addRequired(p,'allpcond',pcond_chk);
 %## OPTIONAL
 addOptional(p,'allpgroup',@iscell);
 %## PARAMETER
-addParameter(p,'PLOT_STRUCT',DEFAULT_PLOT_STRUCT,@(x) validate_struct(x,DEFAULT_PLOT_STRUCT));
+addParameter(p,'PLOT_STRUCT',DEFAULT_PLOT_STRUCT,@(x) validate_struct(x,DEFAULT_PLOT_STRUCT,DO_PRINTS));
 parse(p,allersp,alltimes,allfreqs,allersp_mask,allpcond,varargin{:});
 %## SET DEFAULTS
 allpgroup = p.Results.allpgroup;
 PLOT_STRUCT = p.Results.PLOT_STRUCT;
+PLOT_STRUCT = set_defaults_struct(PLOT_STRUCT,DEFAULT_PLOT_STRUCT,DO_PRINTS);
 if isempty(PLOT_STRUCT.freq_lims)
     PLOT_STRUCT.freq_lims = [allfreqs(1),allfreqs(end)];
 end
@@ -106,12 +114,16 @@ PLOT_STRUCT = set_defaults_struct(PLOT_STRUCT,DEFAULT_PLOT_STRUCT);
 %## set color limits
 if isempty(PLOT_STRUCT.clim)
     %##
-    data = cat(3,allersp{:});
-    bound = max([abs(prctile([data],5,'all')),abs(prctile([data],95,'all'))]);
-    PLOT_STRUCT.clim = sort([-round(bound,1),round(bound,1)]);
+    % data = cat(3,allersp{:});
+    data = [allersp{:}];
+    while iscell(data)
+        data = [data{:}];
+    end
+    bound = max([abs(prctile(data,5,'all')),abs(prctile(data,95,'all'))]);
+    PLOT_STRUCT.clim = sort([-round(bound,1,'significant'),round(bound,1,'significant')]);
 end
 %## ASSIGN INTERVALS
-colorbar_tick_intervals = round(linspace(PLOT_STRUCT.clim(1),PLOT_STRUCT.clim(2),7),2);
+colorbar_tick_intervals = round(linspace(PLOT_STRUCT.clim(1),PLOT_STRUCT.clim(2),7),2,'significant');
 %%
 inds1 = allfreqs>=PLOT_STRUCT.freq_lims(1) & allfreqs<=PLOT_STRUCT.freq_lims(2);
 inds2 = alltimes>=PLOT_STRUCT.time_lims(1) & alltimes<=PLOT_STRUCT.time_lims(2);
@@ -127,6 +139,16 @@ end
 PLOT_STRUCT.time_lims = [alltimes(1),alltimes(end)];
 PLOT_STRUCT.freq_lims = [allfreqs(1),allfreqs(end)];
 %%
+%--
+sz = size(allersp{1});
+indt = find(sz == length(alltimes));
+indf = find(sz == length(allfreqs));
+for i = 1:size(allersp,1)
+    for j = 1:size(allersp,2)
+        allersp{i,j} = permute(allersp{i,j},[indf,indt]); % reshape so its in the form [time, freq]
+    end
+end
+%--
 fig = figure('color','white','renderer','Painters');
 set(fig,'Units','inches','Position',PLOT_STRUCT.figure_position_inch)
 set(fig,'PaperUnits','inches','PaperSize',[1 1],'PaperPosition',[0 0 1 1])
@@ -205,9 +227,9 @@ for i = 1:size(allersp,2) % group
                 PLOT_STRUCT.xticklabel_times(end) = xrng(end);
             end
             set(ax,'XTick',PLOT_STRUCT.xticklabel_times);
-            for k = 1:length(PLOT_STRUCT.xticklabel_times)
-                xline(ax,PLOT_STRUCT.xticklabel_times(k),'k--')
-            end
+            % for k = 1:length(PLOT_STRUCT.xticklabel_times)
+            %     xline(ax,PLOT_STRUCT.xticklabel_times(k),'k--')
+            % end
         end
         if i == subp_dim1
             if ~isempty(PLOT_STRUCT.xticklabel_chars)
@@ -245,7 +267,7 @@ for i = 1:size(allersp,2) % group
         % GROUPTITLE_BOXSIZE = 0.1;
         xx = 0.5+(-GROUPTITLE_BOXSIZE/2)+PLOT_STRUCT.group_titles_shift_x;
         yy = vert_shift+PLOT_STRUCT.subplot_height*PLOT_STRUCT.group_titles_shift_y;
-        a = annotation(fig,'textbox',[xx,yy,GROUPTITLE_BOXSIZE,GROUPTITLE_BOXSIZE],...
+        a = annotation(gcf,'textbox',[xx,yy,GROUPTITLE_BOXSIZE,GROUPTITLE_BOXSIZE],...
             'String',PLOT_STRUCT.group_titles{i},'LineStyle','none',...
             'FontName',PLOT_STRUCT.font_name,'FontSize',GROUPTITLE_FONTSIZE,...
             'FontWeight',GROUPTITLE_FONTWEIGHT,...

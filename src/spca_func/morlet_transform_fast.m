@@ -48,6 +48,7 @@ function [P,param_struct] = morlet_transform_fast(x,t,f,fc,FWHM_tc,squared,data_
 % Authors: Dimitrios Pantazis, 2010
 % adapted by Martin Seeber, 2015/17
 
+data_type = 'double';
 FWHM_tc(FWHM_tc < 1) = 1;
 
 %- signal parameters

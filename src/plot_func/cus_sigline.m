@@ -1,4 +1,4 @@
-function [h_out] = cus_sigline(ax,p_value,conn_x,varargin)
+function [h_out,sig_gap] = cus_sigline(ax,p_value,conn_x,varargin)
 %CUS_SIGLINE Summary of this function goes here
 %GROUP_VIOLIN Summary of this function goes here
 % CAT CODE
@@ -41,30 +41,39 @@ LINE_STRUCT = set_defaults_struct(LINE_STRUCT,DEF_LINE_STRUCT);
 %% ===================================================================== %%
 %- REDUNDANCY
 LINE_STRUCT.sig_levels = sort(LINE_STRUCT.sig_levels,'descend');
-%- SIGNIFICANCE SIGN OFFSET
-if isempty(LINE_STRUCT.sig_offset_y)
-    sig_offset_y = 0.025*(abs(axylim(2)-axylim(1)));
-else
-    sig_offset_y = LINE_STRUCT.sig_offset_y;
-end
-if isempty(LINE_STRUCT.conn_y)
-    conn_y = repmat(gety(ax),[1,2]);
-else
+%-- connector offset
+if ~isempty(LINE_STRUCT.conn_y) && length(LINE_STRUCT.conn_y) == 2
     conn_y = LINE_STRUCT.conn_y;
-end
-if isempty(LINE_STRUCT.conn_offset_y)
-    conn_offset_y = 0.1*(abs(axylim(2)-axylim(1)));
 else
+    conn_y = repmat(gety(ax),[1,2]);
+end
+if ~isempty(LINE_STRUCT.conn_offset_y)
     conn_offset_y = LINE_STRUCT.conn_offset_y;
+else
+    conn_offset_y = 0.1*(abs(axylim(2)-axylim(1)));
 end
 conn_y = conn_y+conn_offset_y;
+%-- signficance sign offset
+if ~isempty(LINE_STRUCT.sig_offset_y)
+    sig_offset_y = LINE_STRUCT.sig_offset_y;    
+else
+    sig_offset_y = abs(0.01*conn_y); %0.025*(abs(axylim(2)-axylim(1)));
+end
+
 %## PLOT
+% sig_gap = [];
+sig_gap = abs(sig_offset_y);
+h_out = [];
 hold on;
-h_out = plot(ax,conn_x,conn_y+conn_offset_y,LINE_STRUCT.line_specs{:});
 %- add label
-chkl = find((p_value <= LINE_STRUCT.sig_levels),1,'last');
-if ~isempty(chkl) && ~strcmp(LINE_STRUCT.sig_sign,'')
-    sig_sign = repmat(LINE_STRUCT.sig_sign,[1,chkl]);
+chk1 = find((p_value <= LINE_STRUCT.sig_levels),1,'last');
+%-- plot line
+if ~isempty(chk1)    
+    h_out = plot(ax,conn_x,conn_y+conn_offset_y,LINE_STRUCT.line_specs{:});
+end
+%-- add label
+if ~isempty(chk1) && ~strcmp(LINE_STRUCT.sig_sign,'')    
+    sig_sign = repmat(LINE_STRUCT.sig_sign,[1,chk1]);
     text(ax,mean(conn_x)+LINE_STRUCT.sig_offset_x,mean(conn_y)+sig_offset_y,sig_sign,...
         LINE_STRUCT.text_specs{:});
     % h_out = [h_out,tx];

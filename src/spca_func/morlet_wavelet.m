@@ -41,5 +41,10 @@ W = (sigma_tc*sqrt(pi))^(-0.5) * exp( -(t.^2)/(2*sigma_tc^2) ) .* exp(1i*2*pi*fc
 
 %Andrew:  W = (2 * pi * sigma_tc^2)^(-0.5) * exp( -(t.^2)/(2*sigma_tc^2) ) .* exp(1i*2*pi*fc*t);
 
+%(05/12/2025) JS, notes:
+%Fpsi(f,cf,scale):=f*cf^(cf*scale)*e^(-f*cf+1*cf*scale)
+%cf_j = 1*scale*(j+q)^r
+%scale = 0.3, q = 1.45, r = 1.959
+
 
 

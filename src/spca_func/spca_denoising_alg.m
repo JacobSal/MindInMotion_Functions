@@ -1,4 +1,4 @@
-function [ERSP_corr, GPM_corr, ERSP_psc1, PSC, V] = specPCAdenoising(ERSP, varargin)
+function [ERSP_corr, GPM_corr, ERSP_psc1, PSC, V] = spca_denoising_alg(ERSP, varargin)
 % spectral PCA denoising. PCA of gait ERSP and removal of first first principal 
 % component as describend in:
 % Seeber M, Scherer R, Wagner J, Solis-Escalante T, Müller-Putz GR. 

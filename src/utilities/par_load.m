@@ -1,12 +1,12 @@
-function [OUTVAR] = par_load(fPath,varargin)
+function [OUTVAR] = par_load(fpath,varargin)
 %PAR_SAVE Summary of this function goes here
 %   Detailed explanation goes here
 %
 %   IN:
 %       REQUIRED:
-%           fPath, CHAR
+%           fpath, CHAR
 %               path to the folder where your file is held
-%           fName, CHAR
+%           fname, CHAR
 %               file name & extension (e.g., 'INEEG.mat')
 %       OPTIONAL:
 %           path_ext, CHAR (default: [])
@@ -17,70 +17,50 @@ function [OUTVAR] = par_load(fPath,varargin)
 %       OUTVAR, VAR
 %           
 %   IMPORTANT:
-%## SETS
-try
-    if strncmp(computer,'PC',2)
-        DO_UNIX = false;
-    else
-        DO_UNIX = true;
-    end
-catch
-    error('OSError:unknownOS','ERROR. You are working in an unknown Operating System.');
-end
 %## TIME
-tt = tic;
+tt = tic();
 %## DEFINE DEFAULTS
-FILESEP_UNIX = '/';
-FILESEP_DOS = '\';
-%-
-fName = [];
-verify_fName = (@(x) ischar(x) || isempty(x));
+fname = [];
+errorMsg = 'Value ''fname'' must be CHAR || EMPTY.';
+fn_validFcn = @(x) assert(ischar(x) || isempty(x),errorMsg);
+struct_fn = [];
+
 %## PARSER
 p = inputParser;
 %## REQUIRED
-addRequired(p,'fPath',@ischar)
+addRequired(p,'fpath',@ischar)
 %## OPTIONAL
-addOptional(p,'fName',fName,verify_fName)
+addOptional(p,'fname',fname,fn_validFcn)
+addOptional(p,'struct_fn',struct_fn,@(x) ischar(x) || isempty(x))
 %## PARSE
-parse(p, fPath, varargin{:});
+parse(p, fpath, varargin{:});
 %## SET DEFAULTS
-fName = p.Results.fName;
+fname = p.Results.fname;
+struct_fn = p.Results.struct_fn;
 %% ===================================================================== %%
-if isempty(fName)
-    sunix = contains(fPath,FILESEP_UNIX);
-    sdos = contains(fPath,FILESEP_DOS);
-    if sunix
-        spath = strsplit(fPath,FILESEP_UNIX);
-        jpath = join(spath(1:end-1)',FILESEP_UNIX);
-        fName = spath{end};
-        fPath = jpath{1};
-    elseif sdos
-        spath = strsplit(fPath,FILESEP_DOS);
-        jpath = join(spath(1:end-1)',FILESEP_DOS);
-        fName = spath{end};
-        fPath = jpath{1};
-    end
+%## SET LOAD FPATH
+%- if filename is included in path
+if isempty(fname)
+    spath = strsplit(fpath,filesep);
+    jpath = join(spath(1:end-1)',filesep);
+    fname = spath{end};
+    fpath = jpath{1};  
 end
-%## 
-if DO_UNIX
-    %- convert path
-    pathIn = convertPath2UNIX(fPath);
-    %- load
-    fprintf('\nLoading %s from\n%s\n',fName,pathIn);
-    tmp = load([pathIn filesep fName]); 
-    %- extract
-    fs = fields(tmp);
-    OUTVAR = tmp.(fs{1});
-else
-    %- convert path
-    pathIn = convertPath2Drive(fPath);
-    %- load
-    fprintf('\nLoading %s from\n%s\n',fName,pathIn);
-    tmp = load([pathIn filesep fName]);
-    %- extract
-    fs = fields(tmp);
-    OUTVAR = tmp.(fs{1});  
+
+%## LOAD
+load_fpath = [fpath filesep fname];
+%-- 
+s = dir(load_fpath);
+if isempty(s)
+    error('File %s does not exist.',fname);
 end
-fprintf('done. par_load duration: %0.2g\n',toc(tt))
+fprintf('\n%s is %0.2g Gigabytes\n',fname,s.bytes/1e9);
+OUTVAR = load(load_fpath);
+OUTVAR = OUTVAR.SAVEVAR;
+if ~isempty(struct_fn)
+    OUTVAR = OUTVAR.(struct_fn);
+end
+%-- time
+fprintf('done. par_load duration: %0.2f s\n',toc(tt))
 end
 

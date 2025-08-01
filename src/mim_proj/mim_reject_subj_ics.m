@@ -150,7 +150,11 @@ if chk
 elseif CHK_STRUCT.do_rmv_comps
     %- (07/06/2023) JS, code taken from EEGLAB
     fprintf('%s) making dipfit & ica modifications...\n',EEG.subject)
-    components = EEG.etc.urreject.ic_rej;
+    old_dipfit_model = EEG.dipfit.model;
+    % component_keep = setdiff_bc(1:size(EEG.icaweights,1), components);
+    % goodinds    = setdiff_bc(1:size(EEG.icaweights,1), components);
+    EEG = pop_subcomp(EEG,tmp_good,0,1);
+    %{
     fprintf('Computing projection and removing %d components ....\n', length(components));
     component_keep = setdiff_bc(1:size(EEG.icaweights,1), components);
     compproj = EEG.icawinv(:, component_keep)*eeg_getdatact(EEG, 'component', component_keep, 'reshape', '2d');
@@ -164,26 +168,27 @@ elseif CHK_STRUCT.do_rmv_comps
     EEG.specicaact  = [];
     EEG.specdata    = [];
     EEG.reject      = [];
-    %- iclabel mods
-    fprintf('making iclabel modifications\n');
-    if isfield(EEG.etc, 'ic_classification')
-        if isfield(EEG.etc.ic_classification, 'ICLabel') 
-            if isfield(EEG.etc.ic_classification.ICLabel, 'classifications')
-                if ~isempty(EEG.etc.ic_classification.ICLabel.classifications)
-                    EEG.etc.ic_classification.ICLabel.classifications = EEG.etc.ic_classification.ICLabel.classifications(goodinds,:);
-                end
-            end
-        end
-    end
-    try
-        old_dipfit_model = EEG.dipfit.model;
-        EEG.dipfit.model = EEG.dipfit.model(goodinds);
-    catch e
-        fprintf(['error. identifier: %s\n',...
-             'error. %s\n',...
-             'error. on subject %s\n',...
-             'stack. %s\n'],e.identifier,e.message,EEG.subject,getReport(e));
-    end
+    %}
+    % %- iclabel mods
+    % fprintf('making iclabel modifications\n');
+    % if isfield(EEG.etc, 'ic_classification')
+    %     if isfield(EEG.etc.ic_classification, 'ICLabel') 
+    %         if isfield(EEG.etc.ic_classification.ICLabel, 'classifications')
+    %             if ~isempty(EEG.etc.ic_classification.ICLabel.classifications)
+    %                 EEG.etc.ic_classification.ICLabel.classifications = EEG.etc.ic_classification.ICLabel.classifications(tmp_good,:);
+    %             end
+    %         end
+    %     end
+    % end
+    % try
+    %     old_dipfit_model = EEG.dipfit.model;
+    %     EEG.dipfit.model = EEG.dipfit.model(tmp_good);
+    % catch e
+    %     fprintf(['error. identifier: %s\n',...
+    %          'error. %s\n',...
+    %          'error. on subject %s\n',...
+    %          'stack. %s\n'],e.identifier,e.message,EEG.subject,getReport(e));
+    % end
     %- dipfit prints
     tmp = {old_dipfit_model(tmp_good).pos_old};
     if ~isempty(tmp)
