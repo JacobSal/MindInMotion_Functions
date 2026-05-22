@@ -61,13 +61,39 @@ for i = 1:length(table_in)
                 fprintf('%s) Adding fields %s\n',table_ids{i},var_add{j});
             end
         end
-    end 
+    end
 %     table_in{subj_i} = EEG;
     % table_in{i} = orderfields(tmp_table);
     table_in{i} = tmp_table;
 end
 %- CONCATENATE table_in
-table_out = cat(1,table_in{:}); %cellfun(@(x) [[]; x], table_in);
+try
+    table_out = cat(1,table_in{:});
+catch ME
+    if strcmp(ME.identifier,'MATLAB:table:vertcat:VertcatCellAndNonCell')
+        fd = regexp(ME.message, '''(.*?)''', 'tokens');
+        inds = cellfun(@(x) iscell(x.(fd{1}{1})),table_in);
+        majt = sum(inds);
+        if majt > (0.5*length(table_in))
+            inds = find(not(inds));
+            table_in(inds) = [];
+            for i = 1:length(inds)
+                warning('Index %i) Field %s is not type cell. Removing from table.', ...
+                    inds(i),fd{1}{1});
+            end
+        else
+            inds = find(inds);
+            table_in(inds) = [];
+            for i = 1:length(inds)
+                warning('Index %i) Field %s is type cell. Removing from table.', ...
+                    inds(i),fd{1}{1});
+            end
+        end
+        table_out = cat(1,table_in{:});
+    else
+        error('%s\n',getReport(e));
+    end
+end
 fprintf('util_resolve_struct processing time: %0.2f\n\n',toc(t));
 end
 

@@ -31,7 +31,8 @@ ax_struct = struct('box','off', ...
     'FontName','Arial', ...
     'FontSize',12, ...
     'OuterPosition',[0 0 1 1], ...
-    'Position',[0.3,0.3,0.5,0.5]);
+    'Position',[0.3,0.3,0.5,0.5], ...
+    'ActivePositionProperty', 'position');
 title_props_struct = struct('Units','normalized',...
     'FontName','Arial', ...
     'FontSize',8, ...
@@ -103,7 +104,7 @@ LINE_STRUCT.line_props.Color
 if ~isempty(LINE_STRUCT.line_props.Color) && size(LINE_STRUCT.line_props.Color,1) > 1
     do_split_colors = true;
     color_hold = LINE_STRUCT.line_props.Color;
-    LINE_STRUCT.line_props.Color = [];
+    LINE_STRUCT.line_props.Color = [0,0,0];
 end
 
 %## CONVERT STRUCT ARGUMENTS TO CELL ARGS
@@ -118,13 +119,19 @@ hold on;
 if LINE_STRUCT.do_err_shading
     tmp = LINE_STRUCT.err_bnd_vec;
     sz = size(tmp);
-    if sz(2) ~= 2
+    if isempty(LINE_STRUCT.err_bnd_vec) && all(size(psd_dat) > 1)
+        freqd = find(size(psd_dat) ~= length(freqs));
+        tmp = zeros(length(freqs),2);
+        tmp(:,1) = mean(psd_dat,freqd) + std(psd_dat,[],freqd)/size(psd_dat,freqd);
+        tmp(:,2) = mean(psd_dat,freqd) - std(psd_dat,[],freqd)/size(psd_dat,freqd);
+        LINE_STRUCT.line_avg_fcn = @(x,dim) mean(x,dim);
+    elseif sz(2) ~= 2
         tmp = LINE_STRUCT.err_bnd_vec';
     end
     sz = size(psd_dat);
     if all(sz > 1) && LINE_STRUCT.do_line_avg
         [ax,Pa,Li] = cus_jackknife_sung(ax,freqs, ...
-            LINE_STRUCT.line_avg_fcn(psd_dat), ...
+            LINE_STRUCT.line_avg_fcn(psd_dat,freqd), ...
             tmp, ...
             'LINE_STRUCT',LINE_STRUCT); %#ok<ASGLU>   
     else

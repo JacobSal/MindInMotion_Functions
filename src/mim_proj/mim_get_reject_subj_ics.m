@@ -174,6 +174,7 @@ num_ics = 1:size(EEG.icawinv,2);
 % Residual variance < 0.15
 ic_rv = vertcat(EEG.dipfit.model.rv);
 ic_posxyz = vertcat(EEG.dipfit.model.posxyz);
+ic_rv = ic_rv(ic_rv~=1);
 ics_rv_keep = find(ic_rv <= REJ_STRUCT.ica_rv_thresh & all(~isnan(ic_posxyz),2));
 
 %% (ICLABEL CRITERIA) ================================================== %%
@@ -287,14 +288,18 @@ if params_pp.do_calc
             exportgraphics(fig_i,[tmp_save_dir filesep 'powpowcat.jpg']);
 
             %## (PLOT 2) EXTENDED COMPONENT PROPERTIES
+            % comps = find([dipfit.model.rv]~=1);
             for ii = 1:length(bad_ics_out)
                 fprintf('\nPlotting extended component properties of bad ICs');
                 % plot extended comp properties
-                pop_prop_extended(tmp,0,bad_ics_out(ii),nan(),{'freqrange',[2,80]},{},1,'')
-                fig_i = get(groot,'CurrentFigure');
-                exportgraphics(fig_i,[tmp_save_dir filesep sprintf('%s_properties_%i.jpg',tmp.subject,powpow_ics(bad_ics_out(ii)))], ...
-                    'Resolution',300);
-                close(fig_i);
+                tmp = EEG.dipfit.model(bad_ics_out(ii));
+                if isempty(tmp.datapot)
+                    pop_prop_extended(tmp,0,bad_ics_out(ii),nan(),{'freqrange',[2,80]},{},1,'')
+                    fig_i = get(groot,'CurrentFigure');
+                    exportgraphics(fig_i,[tmp_save_dir filesep sprintf('%s_properties_%i.jpg',tmp.subject,powpow_ics(bad_ics_out(ii)))], ...
+                        'Resolution',300);
+                    close(fig_i);
+                end
             end           
         end
         bad_powpow_ics = powpow_ics(bad_ics_out);

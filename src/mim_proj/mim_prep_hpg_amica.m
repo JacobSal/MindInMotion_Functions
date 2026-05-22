@@ -49,27 +49,9 @@ DEF_BASH_PARAMS = struct('num_nodes',64, ...
     'qos_name','dferris-b', ...
     'account_name','dferris', ...
     'amica_dll_fpath',[filesep 'blue' filesep 'dferris' filesep, ...
-        'share' filesep 's.peterson' filesep 'test' filesep,...
-        'AMICA_15' filesep 'amica15ub'], ...
+        'share' filesep 's.peterson' filesep 'rhel9_amica_15' filesep,...
+        'amica17ub'], ...
     'amica_bash_fname','run_amica_hipergator.sh');
-
-% NUM_MODELS          = 1;
-% MAX_ITERS           = 2500;
-% MAX_DURATION        = hours(3); %minutes, days, etc.
-% NUM_NODES           = 64; % How many nodes to request
-% NUM_TASKS           = NUM_NODES; % Number of MPI jobs
-% NUM_MEM             = ceil(512*NUM_MODELS*1.5); % memory per cpu used (in MB) %Changed to 2*512=1024 (06/16/2022)
-% NUM_TASKS_PER_NODE  = 1; % ryan edit: noticed the code ran best when you only used a single CPU from each node so i would generally set this to 1
-% MAX_DUATION.Format = 'hh:mm:ss';
-% NUM_TIME            = char(MAX_DURATION); % Wall time hh:mm:ss
-% QOS_NAME            = 'dferris-b'; % Use 'dferris' or 'dferris-b' (burst allocation)
-% %- DEFAULTS
-% AMICA_DLL_PATH = [filesep 'blue' filesep 'dferris' filesep,...
-%                 'share' filesep 's.peterson' filesep 'test' filesep,...
-%                 'AMICA_15' filesep 'amica15ub'];
-% disp('Converting data to double...');
-% tmpdata = double(EEG.data);
-% PCA_KEEP = min([rank(tmpdata), EEG.nbchan-avg_ref_pca_reduction]); % PCA value to use
 
 p = inputParser;
 %## REQUIRED
@@ -79,8 +61,8 @@ addRequired(p,'amica_out_fpath',@ischar);
 addRequired(p,'email_char',@ischar);
 %## OPTIONAL
 %## PARAMETER
-addParameter(p,'AMICA_PARAMS',DEF_AMICA_PARAMS,@(x) validate_struct(x,DEF_VIOLIN_STRUCT));
-addParameter(p,'BASH_PARAMS',DEF_BASH_PARAMS,@(x) validate_struct(x,DEF_VIOLIN_STRUCT));
+addParameter(p,'AMICA_PARAMS',DEF_AMICA_PARAMS,@(x) validate_struct(x,DEF_AMICA_PARAMS));
+addParameter(p,'BASH_PARAMS',DEF_BASH_PARAMS,@(x) validate_struct(x,DEF_BASH_PARAMS));
 %-- parse
 parse(p,EEG,fdt_fpath,amica_out_fpath,email_char,varargin{:});
 %## SET DEFAULTS
@@ -88,6 +70,8 @@ AMICA_PARAMS = p.Results.AMICA_PARAMS;
 AMICA_PARAMS = set_defaults_struct(AMICA_PARAMS,DEF_AMICA_PARAMS); 
 BASH_PARAMS = p.Results.BASH_PARAMS;
 BASH_PARAMS = set_defaults_struct(BASH_PARAMS,DEF_BASH_PARAMS); 
+%(05/10/2026) JS, udpating to conform to a more efficient hyperocmputing setup.
+AMICA_PARAMS.num_tasks = BASH_PARAMS.num_tasks;
 %% ===================================================================== %%
 %## STORE AMICA/BASH PARAMS
 EEG.etc.amica_run = AMICA_PARAMS;
@@ -122,7 +106,7 @@ end
 fprintf('Done creating .param and .sh files for AMICA.\n');
 cmd_out = {['cd ' convertPath2UNIX(amica_out_fpath)];...
               sprintf('sbatch  %s',convertPath2UNIX(bash_out_fPath))};
-%% ===================================================================== %%
+              
 %## SUBFUNCTION ======================================================== %%
 function [fid,paramf_fpath] = make_param_amica(float_fPath, out_fPath, ...
         params)
@@ -184,8 +168,11 @@ function [fid,paramf_fpath] = make_param_amica(float_fPath, out_fPath, ...
     % 1) use PCA reduction on the data or 2) set 
     % max_threads to 1 and set num_tasks to be a large number with one task per 
     % node. AMICA runs quickly this way
+    %(05/10/2026) JS, RJD was wrong with the revious comment and simply needed to 
+    % use fewer nodes and tasks and increase number of threads. This value should be set
+    % to 32 or 64
     % fprintf(fid,['max_threads %d\n'],num_tasks); 
-    fprintf(fid,'max_threads %d\n',1); 
+    fprintf(fid,'max_threads %d\n',params.num_tasks); 
     fprintf(fid,'writestep 250\n'); 
     %(02/21/2025) RJD (JS), ryan switched from 10 to 250 since performance was slowing down a lot during writing
     fprintf(fid,'write_nd 0\n');
@@ -255,7 +242,7 @@ function [fid,sh_out_fPath] = make_amica_bash(subj_char, out_fpath, param_fpath,
     fprintf(fid,'#SBATCH --time=%s\n',params.max_duration);
     fprintf(fid,'#SBATCH --account=%s\n',params.account_name);
     fprintf(fid,'#SBATCH --qos=%s\n',params.qos_name);
-    fprintf(fid,'#SBATCH --partition=hpg2-compute\n'); 
+    fprintf(fid,'#SBATCH --partition=hpg-default\n'); 
     %(12/15/2020) RJD? (JS), because recommended by hipergator IT when 
     % random nodes on older part of cluster would cause AMICA to crash. 
     % This limits selection to hipergator 2
@@ -275,10 +262,135 @@ function [fid,sh_out_fPath] = make_amica_bash(subj_char, out_fpath, param_fpath,
     %--
     fprintf(fid,'module purge\n'); 
     %(03/07/2023) JS, not sue if this is needed, but its use is encouraged on the HiperGator Wiki.
-    fprintf(fid,'module load ufrc\n');
-    fprintf(fid,'module load intel/2020 openmpi/4.1.5\n');
-    fprintf(fid,'srun --mpi=pmix_v3 %s %s\n',convertPath2UNIX(params.amica_dll_fpath), convertPath2UNIX(param_fpath));
+    fprintf(fid,'module load gcc/12.2.0 openmpi/5.0.7 openblas lapack mkl\n');
+    fprintf(fid,'srun --mpi=pmix_v5 %s %s\n',convertPath2UNIX(params.amica_dll_fpath), convertPath2UNIX(param_fpath));
     fclose(fid);
 end
+
+function [struct_out] = set_defaults_struct(x,DEFAULT_STRUCT,varargin)
+%   Detailed explanation goes here
+%   IN: 
+%   OUT: 
+%   IMPORTANT: 
+% CAT CODE
+%  _._     _,-'""`-._
+% (,-.`._,'(       |\`-/|
+%     `-.-' \ )-`( , o o)
+%           `-    \`_`"'-
+% Code Designer: Chang Liu, Jacob Salminen
+% Code Date: 04/28/2023, MATLAB R2020b
+% Copyright (C) Jacob Salminen, jsalminen@ufl.edu
+% Copyright (C) Chang Liu, liu.chang1@ufl.edu
+%## Define Parser
+p = inputParser;
+%## REQUIRED
+addRequired(p,'x')
+addRequired(p,'DEFAULT_STRUCT');
+%## OPTIONAL
+addOptional(p,'print_chks',true,@islogical);
+%##
+parse(p,x,DEFAULT_STRUCT,varargin{:});
+print_chks = p.Results.print_chks;
+%% ===================================================================== %%
+struct_out = x;
+%##
+fs1 = fields(x);
+fs2 = fields(DEFAULT_STRUCT);
+s_flags = zeros(length(fs2),1);
+vals1 = struct2cell(x);
+%-- check field value's class type
+pchk_fun(sprintf('Setting structure defaults...\n'),print_chks)
+for f = 1:length(fs2)
+    if isstruct(DEFAULT_STRUCT.(fs2{f}))
+        s_flags(f) = true;
+    end
+end
+%-- 
+for f = 1:length(fs2)
+    ind1 = strcmp(fs2{f},fs1);
+    if any(ind1)
+        if isempty(vals1{ind1}) && ~ischar(vals1{ind1})
+            pchk_fun(sprintf('Setting struct.%s to default value\n',fs2{f}),print_chks)
+        
+            struct_out.(fs1{ind1}) = DEFAULT_STRUCT.(fs2{f});
+        elseif isstruct(DEFAULT_STRUCT.(fs2{f}))
+            pchk_fun(sprintf('Recursive iteration on struct.%s...\n',fs2{f}),print_chks)
+        
+            tmp = set_defaults_struct(x.(fs2{f}),DEFAULT_STRUCT.(fs2{f}),print_chks);
+            struct_out.(fs1{ind1}) = tmp;
+        end
+    else
+        pchk_fun(sprintf('Setting struct.%s to default value\n',fs2{f}),print_chks)
+        struct_out.(fs2{f}) = DEFAULT_STRUCT.(fs2{f});
+    end
+end
+end
+
+%##
+function pchk_fun(str_in,print_chks)
+    if print_chks
+        fprintf(str_in);
+    end
+end
+
+
+function [b] = validate_struct(x,DEFAULT_STRUCT,varargin)
+%   Detailed explanation goes here
+%   IN: 
+%   OUT: 
+%   IMPORTANT: 
+% CAT CODE
+%  _._     _,-'""`-._
+% (,-.`._,'(       |\`-/|
+%     `-.-' \ )-`( , o o)
+%           `-    \`_`"'-
+% Code Designer: Chang Liu, Jacob Salminen
+% Code Date: 04/28/2023, MATLAB R2020b
+% Copyright (C) Jacob Salminen, jsalminen@ufl.edu
+% Copyright (C) Chang Liu, liu.chang1@ufl.edu
+%## Define Parser
+p = inputParser;
+%## REQUIRED
+addRequired(p,'x')
+addRequired(p,'DEFAULT_STRUCT');
+%## OPTIONAL
+addOptional(p,'print_chks',true,@islogical);
+%##
+parse(p,x,DEFAULT_STRUCT,varargin{:});
+print_chks = p.Results.print_chks;
+%% ===================================================================== %%
+b = false;
+struct_name = inputname(2);
+%##
+fs1 = fields(x);
+fs2 = fields(DEFAULT_STRUCT);
+vals1 = struct2cell(x);
+vals2 = struct2cell(DEFAULT_STRUCT);
+%-- check field value's class type
+pchk_fun(sprintf('Running structure checks...\n'),print_chks)
+%-- check field names
+chk = cellfun(@(x) any(strcmp(x,fs2)),fs1);
+if ~all(chk)
+    pchk_fun(sprintf('Remove field(s): %s\n',strjoin(fs1(~chk),',')),print_chks)
+    pchk_fun(sprintf('Fields for struct do not match for %s\n',struct_name),print_chks)
+    return
+end
+%- check field value's class type
+for f = 1:length(fs2)
+    ind = strcmp(fs2{f},fs1);
+    if any(ind)
+        chk = strcmp(class(vals2{f}),class(vals1{ind}));
+        if ~chk
+            pchk_fun(sprintf('\nStruct.%s must be type %s, but is type %s\n',fs2{f},class(vals2{f}),class(vals1{ind})),print_chks)
+            return
+        end
+    else
+        pchk_fun(sprintf('Struct.%s is not present in input structure. Setting to default.\n',fs2{f}),print_chks)
+    end
+end
+b = true;
+end
+
+
 
 end

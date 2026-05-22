@@ -1,4 +1,4 @@
-function [EEG_out,Total_rej] = autoRejCh_func_CL(EEG,thres,EEG_chans,Noise_chans,EMG_chans)
+function [EEG_out,badEEGch, badEMGch, badNoiseCh] = autoRejCh_func_CL(EEG,thres,EEG_chans,Noise_chans,EMG_chans)
 % Editted by Chang - add ability to specify threshold
 %% define channels
 % All_chans = 1:EEG.nbchan;
