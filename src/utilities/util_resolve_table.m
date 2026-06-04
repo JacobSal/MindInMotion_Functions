@@ -62,8 +62,6 @@ for i = 1:length(table_in)
             end
         end
     end
-%     table_in{subj_i} = EEG;
-    % table_in{i} = orderfields(tmp_table);
     table_in{i} = tmp_table;
 end
 %- CONCATENATE table_in
